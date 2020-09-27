@@ -39,6 +39,10 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int FILE_PICKER_REQUEST_CODE = 100;
     private static final String TAG = "MainActivity";
+    private static final String URL_UPLOAD_VIDEO ="https://expensesplit.safeml.de/cgi-bin/photoSharingUpload.py" ;
+    private  final  UUID ALBUM_UUID = UUID.randomUUID();
+    private  int  currentPhotoiD    = 1;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +53,6 @@ public class MainActivity extends AppCompatActivity {
 
 
         mainLayout.setOnClickListener(new View.OnClickListener() {
-            private static final String URL_UPLOAD_VIDEO ="https://expensesplit.safeml.de/cgi-bin/photoSharingUpload.py" ;
 
             @Override
             public void onClick(View v) {
@@ -67,10 +70,11 @@ public class MainActivity extends AppCompatActivity {
 
                         for (final String file : files) {
                             Log.d(file, file);
-                            UUID uuid = UUID.randomUUID();
                             Random rand = new Random();
 
-                            final String id = uuid + "-" + String.format("%04d", rand.nextInt(10000));
+                            final String id = ALBUM_UUID + "-" +  String.format("%04d", currentPhotoiD).substring(0, 4);;
+
+                            // increment photId , that will be in your  loop
 
 
                             new Thread() {
