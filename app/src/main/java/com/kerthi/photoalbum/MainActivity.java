@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                                     public void run() {
                                         Map<String, String> params = new HashMap<String, String>(2);
                                         params.put("pw", "PilotProjectAtTheISSE22154b");
-                                        params.put("id", id);
+                                        params.put("id", downloadId);
 
                                         try {
                                             final int result = downloadFile(URL_UPLOAD_VIDEO, params, "/");
