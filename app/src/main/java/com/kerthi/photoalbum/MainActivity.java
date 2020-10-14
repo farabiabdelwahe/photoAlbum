@@ -1,13 +1,12 @@
 package com.kerthi.photoalbum;
 
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.Manifest;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
-
 
 import com.developer.filepicker.controller.DialogSelectionListener;
 import com.developer.filepicker.model.DialogConfigs;
@@ -32,17 +31,20 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int FILE_PICKER_REQUEST_CODE = 100;
     private static final int BUFFER_SIZE = 4096;
 
     private static final String TAG = "MainActivity";
-    private static final String URL_UPLOAD_VIDEO ="https://expensesplit.safeml.de/cgi-bin/photoSharingUpload.py" ;
-    private static final String URL_DOWNLOAD ="https://expensesplit.safeml.de/cgi-bin/photoSharingDownload.py" ;
+    private static final String URL_UPLOAD_VIDEO = "https://expensesplit.safeml.de/cgi-bin/photoSharingUpload.py";
+    private static final String URL_DOWNLOAD = "https://expensesplit.safeml.de/cgi-bin/photoSharingDownload.py";
 
-    private  final  UUID ALBUM_UUID = UUID.randomUUID();
-    private  int  currentPhotoiD    = 1;
+    private final UUID ALBUM_UUID = UUID.randomUUID();
+    private int currentPhotoiD = 1;
 
 
     @Override
@@ -52,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
         View mainLayout = findViewById(R.id.main);
 
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
 
         mainLayout.setOnClickListener(new View.OnClickListener() {
 
@@ -73,9 +76,8 @@ public class MainActivity extends AppCompatActivity {
                             Log.d(file, file);
                             Random rand = new Random();
 
-                            final String id = ALBUM_UUID + "-" +  String.format("%04d", currentPhotoiD).substring(0, 4);;
-
-
+                            final String id = ALBUM_UUID + "-" + String.format("%04d", currentPhotoiD).substring(0, 4);
+                            ;
 
 
                             currentPhotoiD++;
@@ -87,12 +89,12 @@ public class MainActivity extends AppCompatActivity {
 
                                     try {
                                         final String result = multipartRequest(URL_UPLOAD_VIDEO, params, file, "file", "video/mp4");
-                                        Log.d("result" , result);
+                                        Log.d("result", result);
                                         runOnUiThread(new Runnable() {
 
                                             @Override
                                             public void run() {
-                                                Toast.    makeText(getApplicationContext(), "File uploaded :" + result, Toast. LENGTH_SHORT).show();
+                                                Toast.makeText(getApplicationContext(), "File uploaded :" + result, Toast.LENGTH_SHORT).show();
                                             }
                                         });
                                     } catch (Exception e) {
@@ -106,29 +108,29 @@ public class MainActivity extends AppCompatActivity {
 
                             //DOWNLOAD section
 
-                            for (int i = 0 ; i>100 ; i++) {
+                            for (int i = 0; i < 1; i++) {
                                 Log.d(file, file);
 
-                                final String downloadId = ALBUM_UUID + "-" +  String.format("%04d", i).substring(0, 4);;
+                                final String downloadId = ALBUM_UUID + "-" + String.format("%04d", i).substring(0, 4);
+                                ;
 
 
-
-
-                                currentPhotoiD++;
+                                final int finalI = i;
                                 new Thread() {
                                     public void run() {
                                         Map<String, String> params = new HashMap<String, String>(2);
                                         params.put("pw", "PilotProjectAtTheISSE22154b");
-                                        params.put("id", downloadId);
+                                        params.put("id", downloadId+1);
 
                                         try {
-                                            final int result = downloadFile(URL_UPLOAD_VIDEO, params, "/");
-                                            Log.d("result" , result+"");
+                                            final int result = downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/txt" + finalI + ".txt");
+
+                                            Log.d("result", result + "");
                                             runOnUiThread(new Runnable() {
 
                                                 @Override
                                                 public void run() {
-                                                    Toast.    makeText(getApplicationContext(), "File uploaded :" + result, Toast. LENGTH_SHORT).show();
+                                                    Toast.makeText(getApplicationContext(), "File uploaded :" + result, Toast.LENGTH_SHORT).show();
                                                 }
                                             });
                                         } catch (Exception e) {
@@ -138,11 +140,6 @@ public class MainActivity extends AppCompatActivity {
 
                                     }
                                 }.start();
-
-
-                                //DOWNLOAD section
-
-
 
 
                             }
@@ -159,10 +156,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-    public int downloadFile(String urlTo, Map<String, String> parmas, String saveDir )
+    public int downloadFile(String urlTo, Map<String, String> parmas, String saveDir)
             throws IOException {
-        DataOutputStream outputStream = null;
+        String boundary = "*****" + System.currentTimeMillis() + "*****";
+
+        String twoHyphens = "--";
+        String lineEnd = "\r\n";
 
         URL url = new URL(urlTo);
         HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
@@ -173,75 +172,56 @@ public class MainActivity extends AppCompatActivity {
         httpConn.setRequestMethod("POST");
         httpConn.setRequestProperty("Connection", "Keep-Alive");
         httpConn.setRequestProperty("User-Agent", "Android Multipart HTTP Client 1.0");
-        int responseCode = httpConn.getResponseCode();
-        outputStream = new DataOutputStream(httpConn.getOutputStream());
+        httpConn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
 
 
 
+        DataOutputStream dataOutputStream = new DataOutputStream(httpConn.getOutputStream());
 
 
         // Upload POST Data
         Iterator<String> keys = parmas.keySet().iterator();
         while (keys.hasNext()) {
+
+
             String key = keys.next();
             String value = parmas.get(key);
 
-            outputStream.writeBytes("Content-Disposition: form-data; name=\"" + key + "\"" +     "\r\n");
-            outputStream.writeBytes(value);
+            dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
+            dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"" + key + "\"" + lineEnd);
+            dataOutputStream.writeBytes("Content-Type: text/plain" + lineEnd);
+            dataOutputStream.writeBytes(lineEnd);
+            dataOutputStream.writeBytes(value);
+            dataOutputStream.writeBytes(lineEnd);
         }
 
 
-        if (responseCode == HttpURLConnection.HTTP_OK) {
-            String fileName = "";
-            String disposition = httpConn.getHeaderField("Content-Disposition");
-            String contentType = httpConn.getContentType();
-            int contentLength = httpConn.getContentLength();
+        // opens input stream from the HTTP connection
+        InputStream inputStream = httpConn.getInputStream();
 
-            if (disposition != null) {
-                // extracts file name from header field
-                int index = disposition.indexOf("filename=");
-                if (index > 0) {
-                    fileName = disposition.substring(index + 10,
-                            disposition.length() - 1);
-                }
-            } else {
-                // extracts file name from URL
-                fileName = urlTo.substring(urlTo.lastIndexOf("/") + 1,
-                        urlTo.length());
-            }
+        String saveFilePath = saveDir;
 
-            Log.d(getClass().getCanonicalName(),"Content-Type = " + contentType);
-            Log.d(getClass().getCanonicalName(),"Content-Disposition = " + disposition);
-            Log.d(getClass().getCanonicalName(),"Content-Length = " + contentLength);
-            Log.d(getClass().getCanonicalName(),"fileName = " + fileName);
+        // opens an output stream to save into file
+        FileOutputStream fileOutput = new FileOutputStream(saveFilePath);
 
-            // opens input stream from the HTTP connection
-            InputStream inputStream = httpConn.getInputStream();
-
-            String saveFilePath = saveDir + File.separator + fileName;
-
-            // opens an output stream to save into file
-            FileOutputStream fileOutput = new FileOutputStream(saveFilePath);
-
-            int bytesRead = -1;
-            byte[] buffer = new byte[BUFFER_SIZE];
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                // fileOutput.write(buffer, 0, bytesRead);
-            }
-
-            fileOutput.close();
-            inputStream.close();
-
-            Log.d(getClass().getCanonicalName(),"File downloaded");
-        } else {
-            Log.d(getClass().getCanonicalName() ,"No file to download. Server replied HTTP code: " + responseCode);
+        int bytesRead = -1;
+        byte[] buffer = new byte[BUFFER_SIZE];
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            fileOutput.write(buffer, 0, bytesRead);
         }
+
+        fileOutput.close();
+        inputStream.close();
+        dataOutputStream.flush();
+        dataOutputStream.close();
+        Log.d(getClass().getCanonicalName(), "File downloaded");
+
         httpConn.disconnect();
-        return responseCode;
+        return 200;
     }
 
-    public String multipartRequestBitmap(String urlTo, Map<String, String> parmas, Bitmap bitmap, String filefield, String fileMimeType , String targetName) throws Exception {
+    public String multipartRequestBitmap(String urlTo, Map<String, String> parmas, Bitmap bitmap, String filefield, String fileMimeType, String targetName) throws Exception {
         HttpURLConnection connection = null;
         DataOutputStream outputStream = null;
         InputStream inputStream = null;
@@ -282,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
 
             outputStream = new DataOutputStream(connection.getOutputStream());
             outputStream.writeBytes(twoHyphens + boundary + lineEnd);
-            outputStream.writeBytes("Content-Disposition: form-data; name=\"" + filefield + "\"; filename=\"" + targetName+ "\"" + lineEnd);
+            outputStream.writeBytes("Content-Disposition: form-data; name=\"" + filefield + "\"; filename=\"" + targetName + "\"" + lineEnd);
             outputStream.writeBytes("Content-Type: " + fileMimeType + lineEnd);
             outputStream.writeBytes("Content-Transfer-Encoding: binary" + lineEnd);
 
@@ -340,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        return "no response" ;
+        return "no response";
 
     }
 
@@ -439,10 +419,9 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        return "no response" ;
+        return "no response";
 
     }
-
 
 
     private String convertStreamToString(InputStream is) {
