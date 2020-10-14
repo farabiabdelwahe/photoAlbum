@@ -81,9 +81,8 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-                            Log.wtf("iddd" , id);
 
-                            currentPhotoiD++;
+
                             new Thread() {
                                 public void run() {
                                     Map<String, String> params = new HashMap<String, String>(2);
@@ -92,12 +91,16 @@ public class MainActivity extends AppCompatActivity {
 
                                     try {
                                         final String result = multipartRequest(URL_UPLOAD_VIDEO, params, file, "file", "video/mp4");
+                                    downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/final" + currentPhotoiD + ".jpeg");
+
                                         Log.d("result", result);
                                         runOnUiThread(new Runnable() {
 
                                             @Override
                                             public void run() {
                                                 Toast.makeText(getApplicationContext(), "File uploaded :" + result, Toast.LENGTH_SHORT).show();
+                                                currentPhotoiD++;
+
                                             }
                                         });
                                     } catch (Exception e) {
@@ -109,44 +112,10 @@ public class MainActivity extends AppCompatActivity {
                             }.start();
 
 
-                            //DOWNLOAD section
-
-                            for (int i = 0; i < 1; i++) {
-                                Log.d(file, file);
-
-                                final String downloadId = ALBUM_UUID + "-" + String.format("%04d", i+1).substring(0, 4);
-                                Log.wtf("iddd" , downloadId);
 
 
 
-                                final int finalI = i;
-                                new Thread() {
-                                    public void run() {
-                                        Map<String, String> params = new HashMap<String, String>(2);
-                                        params.put("pw", "PilotProjectAtTheISSE22154b");
-                                        params.put("id", downloadId);
 
-                                        try {
-                                            final int result = downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/txt" + finalI + ".txt");
-
-                                            Log.d("result", result + "");
-                                            runOnUiThread(new Runnable() {
-
-                                                @Override
-                                                public void run() {
-                                                    Toast.makeText(getApplicationContext(), "File uploaded :" + result, Toast.LENGTH_SHORT).show();
-                                                }
-                                            });
-                                        } catch (Exception e) {
-
-                                            e.printStackTrace();
-                                        }
-
-                                    }
-                                }.start();
-
-
-                            }
 
 
                         }
