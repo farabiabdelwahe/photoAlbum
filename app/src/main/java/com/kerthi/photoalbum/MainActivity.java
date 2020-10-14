@@ -77,8 +77,11 @@ public class MainActivity extends AppCompatActivity {
                             Random rand = new Random();
 
                             final String id = ALBUM_UUID + "-" + String.format("%04d", currentPhotoiD).substring(0, 4);
-                            ;
 
+
+
+
+                            Log.wtf("iddd" , id);
 
                             currentPhotoiD++;
                             new Thread() {
@@ -111,8 +114,9 @@ public class MainActivity extends AppCompatActivity {
                             for (int i = 0; i < 1; i++) {
                                 Log.d(file, file);
 
-                                final String downloadId = ALBUM_UUID + "-" + String.format("%04d", i).substring(0, 4);
-                                ;
+                                final String downloadId = ALBUM_UUID + "-" + String.format("%04d", i+1).substring(0, 4);
+                                Log.wtf("iddd" , downloadId);
+
 
 
                                 final int finalI = i;
@@ -120,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
                                     public void run() {
                                         Map<String, String> params = new HashMap<String, String>(2);
                                         params.put("pw", "PilotProjectAtTheISSE22154b");
-                                        params.put("id", downloadId+1);
+                                        params.put("id", downloadId);
 
                                         try {
                                             final int result = downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/txt" + finalI + ".txt");
