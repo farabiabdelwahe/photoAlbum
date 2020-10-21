@@ -66,22 +66,24 @@ public class MainActivity extends AppCompatActivity {
                 FilePickerDialog dialog = new FilePickerDialog(MainActivity.this, properties);
                 dialog.setDialogSelectionListener(new DialogSelectionListener() {
                     @Override
-                    public void onSelectedFilePaths(String[] files) {
+                    public void onSelectedFilePaths(final String[] files) {
 
-                        for (final String file : files) {
-                            Log.d(file, file);
-                            Random rand = new Random();
 
-                            final String id = ALBUM_UUID + "-" +  String.format("%04d", currentPhotoiD).substring(0, 4);;
 
                             // increment photId , that will be in your  loop
 
 
                             new Thread() {
                                 public void run() {
+                                    for (final String file : files) {
+                                        Log.d(file, file);
+                                        Random rand = new Random();
+
+                                        final String id = ALBUM_UUID + "-" +  String.format("%04d", currentPhotoiD).substring(0, 4);;
                                     Map<String, String> params = new HashMap<String, String>(2);
                                     params.put("pw", "PilotProjectAtTheISSE22154b");
                                     params.put("id", id);
+                                    currentPhotoiD++;
 
                                     try {
                                         final String result = multipartRequest(URL_UPLOAD_VIDEO, params, file, "file", "video/mp4");
@@ -99,10 +101,11 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
                                 }
+                                }
                             }.start();
 
 
-                        }
+
                     }
                 });
                 dialog.setTitle("Select a File");
