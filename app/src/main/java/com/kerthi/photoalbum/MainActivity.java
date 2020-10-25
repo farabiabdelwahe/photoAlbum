@@ -1,26 +1,24 @@
 package com.kerthi.photoalbum;
 
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.Manifest;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
-
 
 import com.developer.filepicker.controller.DialogSelectionListener;
 import com.developer.filepicker.model.DialogConfigs;
 import com.developer.filepicker.model.DialogProperties;
 import com.developer.filepicker.view.FilePickerDialog;
 
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -32,16 +30,21 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.logging.Logger;
-import java.util.regex.Pattern;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int FILE_PICKER_REQUEST_CODE = 100;
+    private static final int BUFFER_SIZE = 4096;
+
     private static final String TAG = "MainActivity";
-    private static final String URL_UPLOAD_VIDEO ="https://expensesplit.safeml.de/cgi-bin/photoSharingUpload.py" ;
-    private  final  UUID ALBUM_UUID = UUID.randomUUID();
-    private  int  currentPhotoiD    = 1;
+    private static final String URL_UPLOAD_VIDEO = "https://expensesplit.safeml.de/cgi-bin/photoSharingUpload.py";
+    private static final String URL_DOWNLOAD = "https://expensesplit.safeml.de/cgi-bin/photoSharingDownload.py";
+
+    private final UUID ALBUM_UUID = UUID.randomUUID();
+    private int currentPhotoiD = 1;
 
 
     @Override
@@ -51,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
         View mainLayout = findViewById(R.id.main);
 
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
 
         mainLayout.setOnClickListener(new View.OnClickListener() {
 
@@ -66,33 +70,37 @@ public class MainActivity extends AppCompatActivity {
                 FilePickerDialog dialog = new FilePickerDialog(MainActivity.this, properties);
                 dialog.setDialogSelectionListener(new DialogSelectionListener() {
                     @Override
-                    public void onSelectedFilePaths(final String[] files) {
+                    public void onSelectedFilePaths(String[] files) {
+
+                        for (final String file : files) {
+                            Log.d(file, file);
+                            Random rand = new Random();
+
+                            final String id = ALBUM_UUID + "-" + String.format("%04d", currentPhotoiD).substring(0, 4);
 
 
 
-                            // increment photId , that will be in your  loop
+
 
 
                             new Thread() {
                                 public void run() {
-                                    for (final String file : files) {
-                                        Log.d(file, file);
-                                        Random rand = new Random();
-
-                                        final String id = ALBUM_UUID + "-" +  String.format("%04d", currentPhotoiD).substring(0, 4);;
                                     Map<String, String> params = new HashMap<String, String>(2);
                                     params.put("pw", "PilotProjectAtTheISSE22154b");
                                     params.put("id", id);
-                                    currentPhotoiD++;
 
                                     try {
                                         final String result = multipartRequest(URL_UPLOAD_VIDEO, params, file, "file", "video/mp4");
-                                        Log.d("result" , result);
+                                    downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/final" + currentPhotoiD + ".jpeg");
+
+                                        Log.d("result", result);
                                         runOnUiThread(new Runnable() {
 
                                             @Override
                                             public void run() {
-                                                Toast.    makeText(getApplicationContext(), "File uploaded :" + result, Toast. LENGTH_SHORT).show();
+                                                Toast.makeText(getApplicationContext(), "File uploaded :" + result, Toast.LENGTH_SHORT).show();
+                                                currentPhotoiD++;
+
                                             }
                                         });
                                     } catch (Exception e) {
@@ -101,11 +109,16 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
                                 }
-                                }
                             }.start();
 
 
 
+
+
+
+
+
+                        }
                     }
                 });
                 dialog.setTitle("Select a File");
@@ -116,10 +129,72 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public int downloadFile(String urlTo, Map<String, String> parmas, String saveDir)
+            throws IOException {
+        String boundary = "*****" + System.currentTimeMillis() + "*****";
+
+        String twoHyphens = "--";
+        String lineEnd = "\r\n";
+
+        URL url = new URL(urlTo);
+        HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
+        httpConn.setDoInput(true);
+        httpConn.setDoOutput(true);
+        httpConn.setUseCaches(false);
+
+        httpConn.setRequestMethod("POST");
+        httpConn.setRequestProperty("Connection", "Keep-Alive");
+        httpConn.setRequestProperty("User-Agent", "Android Multipart HTTP Client 1.0");
+        httpConn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
 
 
-    public String multipartRequestBitmap(String urlTo, Map<String, String> parmas, Bitmap bitmap, String filefield, String fileMimeType , String targetName) throws Exception {
+
+        DataOutputStream dataOutputStream = new DataOutputStream(httpConn.getOutputStream());
+
+
+        // Upload POST Data
+        Iterator<String> keys = parmas.keySet().iterator();
+        while (keys.hasNext()) {
+
+
+            String key = keys.next();
+            String value = parmas.get(key);
+
+            dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
+            dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"" + key + "\"" + lineEnd);
+            dataOutputStream.writeBytes("Content-Type: text/plain" + lineEnd);
+            dataOutputStream.writeBytes(lineEnd);
+            dataOutputStream.writeBytes(value);
+            dataOutputStream.writeBytes(lineEnd);
+        }
+
+
+        // opens input stream from the HTTP connection
+        InputStream inputStream = httpConn.getInputStream();
+
+        String saveFilePath = saveDir;
+
+        // opens an output stream to save into file
+        FileOutputStream fileOutput = new FileOutputStream(saveFilePath);
+
+        int bytesRead = -1;
+        byte[] buffer = new byte[BUFFER_SIZE];
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            fileOutput.write(buffer, 0, bytesRead);
+        }
+
+        fileOutput.close();
+        inputStream.close();
+        dataOutputStream.flush();
+        dataOutputStream.close();
+        Log.d(getClass().getCanonicalName(), "File downloaded");
+
+        httpConn.disconnect();
+        return 200;
+    }
+
+    public String multipartRequestBitmap(String urlTo, Map<String, String> parmas, Bitmap bitmap, String filefield, String fileMimeType, String targetName) throws Exception {
         HttpURLConnection connection = null;
         DataOutputStream outputStream = null;
         InputStream inputStream = null;
@@ -141,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
             ByteBuffer byteBuffer = ByteBuffer.allocate(byteSize);
             bitmap.copyPixelsToBuffer(byteBuffer);
 
-             byte[] byteArray = byteBuffer.array();
+            byte[] byteArray = byteBuffer.array();
 
 // Get the ByteArrayInputStream.
             ByteArrayInputStream bs = new ByteArrayInputStream(byteArray);
@@ -160,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
 
             outputStream = new DataOutputStream(connection.getOutputStream());
             outputStream.writeBytes(twoHyphens + boundary + lineEnd);
-            outputStream.writeBytes("Content-Disposition: form-data; name=\"" + filefield + "\"; filename=\"" + targetName+ "\"" + lineEnd);
+            outputStream.writeBytes("Content-Disposition: form-data; name=\"" + filefield + "\"; filename=\"" + targetName + "\"" + lineEnd);
             outputStream.writeBytes("Content-Type: " + fileMimeType + lineEnd);
             outputStream.writeBytes("Content-Transfer-Encoding: binary" + lineEnd);
 
@@ -218,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        return "no response" ;
+        return "no response";
 
     }
 
@@ -317,10 +392,9 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        return "no response" ;
+        return "no response";
 
     }
-
 
 
     private String convertStreamToString(InputStream is) {
