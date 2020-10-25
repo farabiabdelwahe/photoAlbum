@@ -8,6 +8,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import com.developer.filepicker.controller.DialogSelectionListener;
 import com.developer.filepicker.model.DialogConfigs;
 import com.developer.filepicker.model.DialogProperties;
@@ -25,14 +28,12 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -79,19 +80,15 @@ public class MainActivity extends AppCompatActivity {
                             final String id = ALBUM_UUID + "-" + String.format("%04d", currentPhotoiD).substring(0, 4);
 
 
-
-
-
-
                             new Thread() {
                                 public void run() {
                                     Map<String, String> params = new HashMap<String, String>(2);
                                     params.put("pw", "PilotProjectAtTheISSE22154b");
                                     params.put("id", id);
+                                    currentPhotoiD++;
 
                                     try {
                                         final String result = multipartRequest(URL_UPLOAD_VIDEO, params, file, "file", "video/mp4");
-                                    downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/final" + currentPhotoiD + ".jpeg");
 
                                         Log.d("result", result);
                                         runOnUiThread(new Runnable() {
@@ -99,7 +96,6 @@ public class MainActivity extends AppCompatActivity {
                                             @Override
                                             public void run() {
                                                 Toast.makeText(getApplicationContext(), "File uploaded :" + result, Toast.LENGTH_SHORT).show();
-                                                currentPhotoiD++;
 
                                             }
                                         });
@@ -112,13 +108,19 @@ public class MainActivity extends AppCompatActivity {
                             }.start();
 
 
-
-
-
-
-
-
                         }
+
+                        new Thread() {
+                            public void run() {
+                                try {
+                                    downloadFiles();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+
+
+                            }
+                        }.start();
                     }
                 });
                 dialog.setTitle("Select a File");
@@ -128,8 +130,32 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void downloadFiles() throws InterruptedException {
+        for (int i = 1; i < 10; i++) {
+            final String downloadId = ALBUM_UUID + "-" + String.format("%04d", i).substring(0, 4);
+            final Map<String, String> params = new HashMap<String, String>(2);
+            params.put("pw", "PilotProjectAtTheISSE22154b");
+            params.put("id", downloadId);
 
-    public int downloadFile(String urlTo, Map<String, String> parmas, String saveDir)
+            Thread.sleep(i * 10000);
+
+
+            boolean isDownloadSuccessful = false;
+            try {
+                isDownloadSuccessful = downloadFile(URL_DOWNLOAD, params, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/final" + i + ".jpeg");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (!isDownloadSuccessful) {
+                return;
+            }
+        }
+
+
+    }
+
+
+    public boolean downloadFile(String urlTo, Map<String, String> parmas, String saveDir)
             throws IOException {
         String boundary = "*****" + System.currentTimeMillis() + "*****";
 
@@ -146,8 +172,6 @@ public class MainActivity extends AppCompatActivity {
         httpConn.setRequestProperty("Connection", "Keep-Alive");
         httpConn.setRequestProperty("User-Agent", "Android Multipart HTTP Client 1.0");
         httpConn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-
-
 
 
         DataOutputStream dataOutputStream = new DataOutputStream(httpConn.getOutputStream());
@@ -179,10 +203,21 @@ public class MainActivity extends AppCompatActivity {
         FileOutputStream fileOutput = new FileOutputStream(saveFilePath);
 
         int bytesRead = -1;
+
         byte[] buffer = new byte[BUFFER_SIZE];
         while ((bytesRead = inputStream.read(buffer)) != -1) {
+            String result = new String(buffer, StandardCharsets.UTF_8);
+            if (result.trim().equals("Error: Photo not found.")) {
+                new File(saveFilePath).delete();
+                return false;
+
+            }
+            Log.wtf("bytesRea", result);
             fileOutput.write(buffer, 0, bytesRead);
+
+
         }
+
 
         fileOutput.close();
         inputStream.close();
@@ -191,7 +226,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d(getClass().getCanonicalName(), "File downloaded");
 
         httpConn.disconnect();
-        return 200;
+        return true;
     }
 
     public String multipartRequestBitmap(String urlTo, Map<String, String> parmas, Bitmap bitmap, String filefield, String fileMimeType, String targetName) throws Exception {
